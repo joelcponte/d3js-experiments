@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<style type="text/css" media="screen, print">
+			body { margin: 30px 50px; font-family: sans-serif; }
+		</style>
+		<title>Cars</title>
+	</head>
+	<body>
+		<h1>Cars</h1>
+
+		<script src="../vendor/d3/d3.js"></script>
+		<script src="../vendor/d3/d3-scale-chromatic.v1.min.js"></script>
+		<script>
+
+var body = d3.select("body");
+
+var  margin = {top: 10, right: 50, bottom: 30, left: 50},
+	width = 600,
+    height = 600,
+	widthInterior = width - margin.left - margin.right,
+    heightInterior = height - margin.top - margin.bottom;
+
+
+var x = d3.scaleLinear().rangeRound([0, widthInterior]);
+var y = d3.scaleLinear().rangeRound([heightInterior, 0]);
+var color = d3.scaleSequential(d3.interpolateBlues);
+var type = d3.scalePoint().range([2, 4, 8]);
+
+
+d3.tsv("data/cars.tsv", function(error, data) {
+	if(error) throw error;
+
+	// body.selectAll('div')
+ 	//    	.data(data)
+	//   .enter().append('div')
+	//     .text(function(d, i) {
+	//     	var t = i + ". " + d.name + " (" +d.year + ", " + d.origin + ")";
+	//     	return t;
+	//     })
+	
+	svg = body.append("div")
+			.append("svg")
+		 	.attr("width", width + margin.left + margin.right)
+		 	.attr("height", height + margin.top + margin.bottom)
+
+	g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	//DOMAINS
+  	x.domain([0, d3.max(data, function(d) { return +d.weight; })*1.1]);
+  	y.domain([0, d3.max(data, function(d) {return +d.mpg; })*1.1]);
+  	color.domain(d3.extent(data, function(d) { return d.year; }));
+  	type.domain(["Japan", "Europe", "USA"])
+
+  	//ADD PLOT
+	g.selectAll("path")
+		.data(data)
+		.enter()
+		.append("path")
+		.attr("transform", function(d) {return "translate(" + x(d.weight) + ", " + y(d.mpg) + ")";})
+		.attr("stroke", function(d) { return color(d.year);})
+		.attr("d", function(d) {switch(d.origin) {
+			case "USA": return("M -4,0 L 4,0 M 0,-4 L 0,4")
+			case "Europe": return(d3.symbol().type(d3.symbolCircle)())
+			case "Japan": return(d3.symbol().type(d3.symbolSquare)())
+		}})
+		.attr("fill", "none")
+
+
+	// LEGEND SYMBOLS
+  	var legendRectSize = 15;
+	var legendSpacing = 2;
+
+	svg.append('text')
+		.attr('x', '400')
+		.attr('y', '15')
+	  	.attr('style', 'font-weight:bold')
+		.text('Origin:')
+
+
+  	var legendSymbol = svg.append('g')
+  		.attr('class', 'legendSymbolBox')
+  		.attr('transform', 'translate(400,25)')
+  		.selectAll('.legend')
+		.data(type.domain())
+		.enter()
+		.append('g')
+		.attr('transform', function(d, i) {
+		    var height = legendRectSize + legendSpacing;
+		    var vert = i * height;
+			return 'translate(' + 0 + ',' + vert + ')';
+		})
+		
+
+	legendSymbol.append('path')
+		.attr('class', 'legend')
+		.attr('transform', 'translate(0,8)')
+		.attr("d", function(d) { switch(d) {
+			case "USA": return("M -4,0 L 4,0 M 0,-4 L 0,4")
+			case "Europe": return(d3.symbol().type(d3.symbolCircle)())
+			case "Japan": return(d3.symbol().type(d3.symbolSquare)())
+			}
+		})
+		.attr("stroke", "#000000")
+		.attr("fill", "none");
+
+	legendSymbol.append('text')
+	  .attr('x', 20)
+	  .attr('y', legendRectSize - legendSpacing)
+	  .text(function(d) { return d; });
+
+	//LEGEND COLORS
+
+	svg.append('text')
+		.attr('x', '500')
+		.attr('y', '15')
+	  	.attr('style', 'font-weight:bold')
+		.text('Year:')
+
+	var yearsLegend = [];
+	for (var i = color.domain()[0]; i <= color.domain()[1]; i++) {
+		yearsLegend.push(i);
+	}
+
+  	var legendColor = svg.append('g')
+  		.attr('class', 'legendColorBox')
+  		.attr('transform', 'translate(500,25)')
+		.selectAll('.legend')
+		.data(yearsLegend)
+		.enter()
+		.append('g')
+		.attr('transform', function(d, i) {
+		    var height = legendRectSize + legendSpacing;
+		    var vert = i * height;
+			return 'translate(' + 0 + ',' + vert + ')';
+		})
+
+	legendColor.append('rect')
+		.attr('class', 'legendColor')
+		.attr('transform', 'translate(0,0)')
+		.attr("width", "15")
+		.attr("height", "15")
+		.attr("style", function(d, i) { return 'fill:' + color(d)})
+
+	legendColor.append('text')
+	  .attr('x', 20)
+	  .attr('y', legendRectSize - legendSpacing)
+	  .text(function(d) { return d; });
+
+	//AXIS
+
+  	g.append("g")
+      	.call(d3.axisLeft(y))
+  		
+  	g.append("g")
+  		.attr("transform", "translate(0," + heightInterior + ")")
+      	.call(d3.axisBottom(x))
+
+	svg.append("text")             
+      .attr("transform",
+            "translate(" + (width/2) + " ," + 
+                           (height + margin.top + 5) + ")")
+      .style("text-anchor", "middle")
+      .text("Weight");
+
+	svg.append("text")
+	    .attr("transform", "rotate(-90)")
+	    .attr("y", 5)
+	    .attr("x",0 - (height / 2))
+	    .attr("dy", "1em")
+	    .style("text-anchor", "middle")
+	    .text("MPG");
+
+});
+
+		</script>
+	</body>
+</html>
